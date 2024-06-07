@@ -1,0 +1,104 @@
+---
+title: "conjoint analysis"
+author: "Miao Li"
+date: "2024-05-21"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(readr)
+library(AER)
+library(fixest)
+library(ggplot2)
+library('fastDummies')
+library(tidyverse)
+```
+
+### Regression with Vivino User Reviews
+```{r}
+df_wines <- read.csv("df_california_wines_with_dummies.csv")
+df_wines$tannin_sq <- df_wines$tannin ** 2
+
+reg <- lm(log(ratingAverage) ~ acidity + intensity + sweetnes + tannin + tannin_sq + oak + earth + spices + black_fruit + red_fruit + dried_fruit + non_oak + microbio + floral + tree_fruit + citrus_fruit + dried_fruit + tropical_fruit + vegetal + Alexander.Valley + California + Napa.Valley + Paso.Robles + Russian.River.Valley + Santa.Barbara + Sonoma.Coast + Sonoma.County + X2013 + X2015 + X2016 + X2017 + X2018 + X2019 + X2020 + X2021 + X2022 + price, data=df_wines)
+
+summary(reg)
+
+```
+
+### Aggregate Conjoint
+```{r cars}
+setwd('/Users/miaoli/Desktop/Uchi/assignments/spring_24/ds for algorithimic marketing/project/')
+df <- read_csv('cali_wine.csv')
+names(df)
+```
+```{r}
+concept_df <- df %>% filter(region == 'Napa Valley' |region == 'California'|region == 'Alexander Valley' ) %>%
+  filter(flavor_1 != 'non_oak' & flavor_2 != 'microbio' & flavor_2 != 'non_oak')
+```
+
+
+
+```{r}
+library(conjoint)
+```
+
+
+```{r}
+profile <- concept_df %>% select('region', 'varietal', 'flavor_1', 'flavor_2')
+preference <- concept_df %>% select('ratingAverage') %>% t()
+preference <- as.data.frame(preference)
+
+# Define levels
+levels <- c('Alexander Valley', 'California', 'Napa Valley',
+            'Blend', 'Cabernet Sauvignon', 'Pinot Noir', 'Zinfandel',
+            'black_fruit', 'earth', 'oak', 'red_fruit',
+            'black_fruit', 'earth', 'oak', 'red_fruit', 'spices')
+
+# Convert the vector to a factor
+levels_factor <- as.data.frame(as.factor(levels))
+
+# Mutate to convert categorical variables to numeric codes
+profile2 <- profile %>% mutate(
+  region = case_when(
+    region == 'Alexander Valley' ~ 1,
+    region == 'California' ~ 2,
+    region == 'Napa Valley' ~ 3
+  ),
+  varietal = case_when(
+    varietal == 'Blend' ~ 1,
+    varietal == 'Cabernet Sauvignon' ~ 2,
+    varietal == 'Pinot Noir' ~ 3,
+    varietal == 'Zinfandel' ~ 4
+  ),
+  flavor_1 = case_when(
+    flavor_1 == 'black_fruit' ~ 1,
+    flavor_1 == 'earth' ~ 2,
+    flavor_1 == 'oak' ~ 3,
+    flavor_1 == 'red_fruit' ~ 4
+  ),
+  flavor_2 = case_when(
+    flavor_2 == 'black_fruit' ~ 1,
+    flavor_2 == 'earth' ~ 2,
+    flavor_2 == 'oak' ~ 3,
+    flavor_2 == 'red_fruit' ~ 4,
+    flavor_2 == 'spices' ~ 5
+  )
+)
+```
+
+
+
+```{r}
+caModel(y=preference, x=profile)
+```
+```{r}
+caPartUtilities(y=preference, x=profile2, z=levels_factor)
+```
+```{r}
+caTotalUtilities(y=preference, x=profile2)
+```
+
